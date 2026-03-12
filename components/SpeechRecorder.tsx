@@ -28,8 +28,10 @@ interface Props {
 
 declare global {
   interface Window {
-    SpeechRecognition: typeof SpeechRecognition;
-    webkitSpeechRecognition: typeof SpeechRecognition;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    SpeechRecognition: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    webkitSpeechRecognition: any;
   }
 }
 
@@ -139,7 +141,8 @@ export default function SpeechRecorder({
   const onFinalTranscriptRef = useRef(onFinalTranscript);
   const onRecordingChangeRef = useRef(onRecordingChange);
   const onStutterDataRef = useRef(onStutterData);
-  const SRRef = useRef<typeof SpeechRecognition | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const SRRef = useRef<any>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const rawChunksRef = useRef<string[]>([]); // raw Web Speech chunks for diff
