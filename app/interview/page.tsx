@@ -49,6 +49,7 @@ interface Metrics {
 interface AIFeedback {
   relevanceScore: number;
   grammarScore: number;
+  fluencyScore: number;
   overallScore: number;
   strengths: string[];
   improvements: string[];
