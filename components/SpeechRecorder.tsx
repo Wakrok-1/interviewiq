@@ -168,7 +168,8 @@ export default function SpeechRecorder({
     rec.lang = "en-US";
     rec.maxAlternatives = 1;
 
-    rec.onresult = (e) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (e: any) => {
       let finalText = "";
       let interimText = "";
       for (let i = 0; i < e.results.length; i++) {
@@ -185,7 +186,8 @@ export default function SpeechRecorder({
       }
     };
 
-    rec.onerror = (e) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onerror = (e: any) => {
       if (e.error === "no-speech" || e.error === "aborted") return;
       if (e.error === "not-allowed" || e.error === "service-not-allowed") {
         setErrorMsg("Microphone permission denied.");
