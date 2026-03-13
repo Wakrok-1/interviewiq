@@ -1,9 +1,17 @@
 "use client";
 
 interface AIFeedback {
+  isBehavioral: boolean;
   relevanceScore: number;
   grammarScore: number;
   fluencyScore: number;
+  starScore: number | null;
+  starComponents: {
+    situation: boolean;
+    task: boolean;
+    action: boolean;
+    result: boolean;
+  } | null;
   overallScore: number;
   strengths: string[];
   improvements: string[];
@@ -117,6 +125,38 @@ export default function FeedbackPanel({ transcript, eyeContact, posture, aiFeedb
               </div>
             )}
           </div>
+
+          {/* STAR breakdown — only for behavioral questions */}
+          {aiFeedback.isBehavioral && aiFeedback.starComponents && (
+            <div className="border border-gray-700 rounded-lg p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-purple-400 uppercase tracking-wide">STAR Method</p>
+                {aiFeedback.starScore !== null && (
+                  <span className={`text-xs font-bold ${scoreColor(aiFeedback.starScore).text}`}>
+                    {aiFeedback.starScore}/100
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {(["situation", "task", "action", "result"] as const).map((key) => {
+                  const present = aiFeedback.starComponents![key];
+                  return (
+                    <div key={key} className={`flex items-center gap-2 rounded px-2 py-1.5 text-xs ${
+                      present ? "bg-green-900/20 text-green-400" : "bg-red-900/20 text-red-400"
+                    }`}>
+                      <span>{present ? "✓" : "✗"}</span>
+                      <span className="capitalize font-medium">{key}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              {aiFeedback.starScore !== null && aiFeedback.starScore < 80 && (
+                <p className="text-xs text-gray-500 pt-0.5">
+                  Structure your answer: <span className="text-gray-400">Situation → Task → Action → Result</span>
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Strengths */}
           {aiFeedback.strengths.length > 0 && (

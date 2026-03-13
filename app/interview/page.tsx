@@ -6,6 +6,7 @@ import { ChevronRight, RotateCcw, Settings } from "lucide-react";
 import CameraFeed from "@/components/CameraFeed";
 import SpeechRecorder, { type StutterData } from "@/components/SpeechRecorder";
 import FeedbackPanel from "@/components/FeedbackPanel";
+import { createClient } from "@/lib/supabase";
 
 const DEFAULT_QUESTIONS = [
   "Tell me about yourself.",
@@ -24,21 +25,9 @@ const DEFAULT_QUESTIONS = [
   "Describe a time you failed and what you learned from it.",
 ];
 
-const STORAGE_KEY = "interviewiq_custom_questions";
-
-function getAllQuestions(): string[] {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    const custom: string[] = stored ? JSON.parse(stored) : [];
-    return [...DEFAULT_QUESTIONS, ...custom];
-  } catch {
-    return DEFAULT_QUESTIONS;
-  }
-}
-
-function randomQuestion(exclude?: string) {
-  const pool = getAllQuestions().filter((q) => q !== exclude);
-  return pool[Math.floor(Math.random() * pool.length)];
+function randomFrom(pool: string[], exclude?: string) {
+  const filtered = pool.filter((q) => q !== exclude);
+  return filtered[Math.floor(Math.random() * filtered.length)];
 }
 
 interface Metrics {
@@ -47,9 +36,17 @@ interface Metrics {
 }
 
 interface AIFeedback {
+  isBehavioral: boolean;
   relevanceScore: number;
   grammarScore: number;
   fluencyScore: number;
+  starScore: number | null;
+  starComponents: {
+    situation: boolean;
+    task: boolean;
+    action: boolean;
+    result: boolean;
+  } | null;
   overallScore: number;
   strengths: string[];
   improvements: string[];
@@ -66,8 +63,27 @@ export default function InterviewPage() {
   const [aiFeedback, setAiFeedback] = useState<AIFeedback | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [stutterData, setStutterData] = useState<StutterData | null>(null);
+  const [allQuestions, setAllQuestions] = useState<string[]>(DEFAULT_QUESTIONS);
 
-  useEffect(() => { setQuestion(randomQuestion()); }, []);
+  // Load custom questions from Supabase if signed in
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (data.user) {
+        const { data: rows } = await supabase
+          .from("custom_questions")
+          .select("question");
+        if (rows && rows.length > 0) {
+          setAllQuestions([...DEFAULT_QUESTIONS, ...rows.map((r: { question: string }) => r.question)]);
+        }
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    setQuestion(randomFrom(allQuestions));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allQuestions]);
 
   const handleTranscript = useCallback((text: string) => {
     setTranscript((prev) => (prev ? prev + " " + text : text));
@@ -79,6 +95,10 @@ export default function InterviewPage() {
 
   const handleMetrics = useCallback((m: Metrics) => {
     setMetrics(m);
+  }, []);
+
+  const handleStutterData = useCallback((data: StutterData) => {
+    setStutterData(data);
   }, []);
 
   async function submitAnswer() {
@@ -100,12 +120,8 @@ export default function InterviewPage() {
     }
   }
 
-  const handleStutterData = useCallback((data: StutterData) => {
-    setStutterData(data);
-  }, []);
-
   function nextQuestion() {
-    setQuestion(randomQuestion(question));
+    setQuestion(randomFrom(allQuestions, question));
     setTranscript("");
     setSubmitted(false);
     setAiFeedback(null);
@@ -121,97 +137,126 @@ export default function InterviewPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
-      <header className="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
-        <Link href="/" className="text-xl font-bold">
+    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
+      {/* Header */}
+      <header className="border-b border-gray-800 px-6 py-3.5 flex items-center justify-between shrink-0">
+        <Link href="/" className="text-lg font-bold">
           Interview<span className="text-blue-400">IQ</span>
         </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-5">
           <Link
             href="/questions"
             className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors"
           >
-            <Settings size={15} />
+            <Settings size={14} />
             Questions
           </Link>
-          <span className="text-gray-500 text-sm">#{questionIndex}</span>
+          <span className="text-xs text-gray-600 bg-gray-800 px-2.5 py-1 rounded-full">
+            Question #{questionIndex}
+          </span>
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left: Camera + live metrics */}
-        <div className="space-y-4">
-          <CameraFeed onMetrics={handleMetrics} />
-          <div className="flex gap-3">
-            <div className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium text-center border ${
+      {/* Main layout */}
+      <div className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-[5fr_7fr] gap-6 items-stretch">
+
+        {/* Left: Camera fills column height, metrics + tip at bottom */}
+        <div className="flex flex-col gap-3">
+          <CameraFeed
+            onMetrics={handleMetrics}
+            className="relative rounded-xl overflow-hidden bg-gray-900 w-full flex-1 min-h-[240px]"
+          />
+
+          {/* Live metrics */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className={`rounded-lg px-3 py-2 text-xs font-medium text-center border transition-colors ${
               metrics.eyeContact
-                ? "bg-green-900/30 border-green-700 text-green-400"
-                : "bg-red-900/30 border-red-800 text-red-400"
+                ? "bg-green-900/20 border-green-800 text-green-400"
+                : "bg-red-900/20 border-red-900 text-red-400"
             }`}>
-              👁 Eye Contact: {metrics.eyeContact ? "Good" : "Look at camera"}
+              👁 {metrics.eyeContact ? "Eye contact good" : "Look at camera"}
             </div>
-            <div className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium text-center border ${
+            <div className={`rounded-lg px-3 py-2 text-xs font-medium text-center border transition-colors ${
               metrics.posture === "good"
-                ? "bg-green-900/30 border-green-700 text-green-400"
-                : "bg-yellow-900/30 border-yellow-700 text-yellow-400"
+                ? "bg-green-900/20 border-green-800 text-green-400"
+                : "bg-yellow-900/20 border-yellow-900 text-yellow-400"
             }`}>
-              🪑 Posture: {metrics.posture === "good" ? "Good" : "Sit straight"}
+              🪑 {metrics.posture === "good" ? "Posture good" : "Sit straight"}
             </div>
           </div>
+
+          {/* Tip — sits at the bottom, same level as Submit Answer */}
+          {!submitted && (
+            <p className="text-xs text-gray-600 text-center px-2">
+              Speak clearly and look at the camera throughout your answer.
+            </p>
+          )}
         </div>
 
         {/* Right: Question + Answer + Feedback */}
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
+
+          {/* Question card */}
           <div className="bg-gray-900 rounded-xl p-5 border border-gray-800">
-            <p className="text-xs text-blue-400 font-semibold uppercase tracking-wide mb-2">
+            <p className="text-xs text-blue-400 font-semibold uppercase tracking-widest mb-2.5">
               Interview Question
             </p>
-            <p className="text-lg font-medium text-white leading-snug">{question}</p>
+            <p className="text-xl font-semibold text-white leading-snug">{question}</p>
           </div>
 
+          {/* Recording phase */}
           {!submitted && (
-            <div className="bg-gray-900 rounded-xl p-4 border border-gray-800 min-h-[100px] max-h-[200px] overflow-y-auto">
-              <p className="text-xs text-gray-500 mb-2">Your answer (live transcript)</p>
-              {transcript ? (
-                <p className="text-sm text-gray-200 leading-relaxed">{transcript}</p>
-              ) : (
-                <p className="text-sm text-gray-600 italic">
-                  {recording ? "Listening..." : "Press Start Recording to begin your answer"}
-                </p>
-              )}
-            </div>
-          )}
+            <div className="flex flex-col gap-4 flex-1">
+              {/* Transcript box — grows to fill available space */}
+              <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden flex flex-col flex-1">
+                <div className="px-4 pt-3 pb-1 border-b border-gray-800/60 shrink-0">
+                  <p className="text-xs text-gray-500 font-medium">Your answer</p>
+                </div>
+                <div className="px-4 py-3 flex-1 overflow-y-auto min-h-[120px]">
+                  {transcript ? (
+                    <p className="text-sm text-gray-200 leading-relaxed">{transcript}</p>
+                  ) : (
+                    <p className="text-sm text-gray-600 italic">
+                      {recording ? "Listening — speak your answer..." : "Click Start Recording to begin"}
+                    </p>
+                  )}
+                </div>
+              </div>
 
-          {!submitted && (
-            <div className="flex flex-col items-center gap-3">
-              <SpeechRecorder
-                onTranscript={handleTranscript}
-                onFinalTranscript={handleFinalTranscript}
-                onRecordingChange={setRecording}
-                onStutterData={handleStutterData}
-                question={question}
-              />
-              <div className="flex gap-3">
-                <button
-                  onClick={resetAnswer}
-                  disabled={!transcript}
-                  className="flex items-center gap-1 px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 disabled:opacity-30 transition-colors"
-                >
-                  <RotateCcw size={14} />
-                  Clear
-                </button>
-                <button
-                  onClick={submitAnswer}
-                  disabled={!transcript.trim() || recording}
-                  className="flex items-center gap-1 px-6 py-2 rounded-lg text-sm font-semibold bg-blue-500 hover:bg-blue-600 disabled:opacity-30 transition-colors"
-                >
-                  Submit Answer
-                  <ChevronRight size={16} />
-                </button>
+              {/* Controls */}
+              <div className="bg-gray-900 rounded-xl p-4 border border-gray-800 shrink-0">
+                <div className="flex flex-col items-center gap-4">
+                  <SpeechRecorder
+                    onTranscript={handleTranscript}
+                    onFinalTranscript={handleFinalTranscript}
+                    onRecordingChange={setRecording}
+                    onStutterData={handleStutterData}
+                    question={question}
+                  />
+                  <div className="flex gap-3">
+                    <button
+                      onClick={resetAnswer}
+                      disabled={!transcript}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 disabled:opacity-30 transition-colors"
+                    >
+                      <RotateCcw size={13} />
+                      Clear
+                    </button>
+                    <button
+                      onClick={submitAnswer}
+                      disabled={!transcript.trim() || recording}
+                      className="flex items-center gap-1.5 px-6 py-2 rounded-lg text-sm font-semibold bg-blue-500 hover:bg-blue-600 disabled:opacity-30 transition-colors"
+                    >
+                      Submit Answer
+                      <ChevronRight size={15} />
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
+          {/* Feedback phase */}
           {submitted && (
             <>
               <FeedbackPanel
@@ -225,10 +270,10 @@ export default function InterviewPage() {
               <button
                 onClick={nextQuestion}
                 disabled={analyzing}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold bg-blue-500 hover:bg-blue-600 disabled:opacity-50 transition-colors"
+                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-semibold bg-blue-500 hover:bg-blue-600 disabled:opacity-50 transition-colors"
               >
                 Next Question
-                <ChevronRight size={18} />
+                <ChevronRight size={17} />
               </button>
             </>
           )}
