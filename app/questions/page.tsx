@@ -63,7 +63,7 @@ export default function QuestionsPage() {
 
     const { data, error: err } = await supabase
       .from("custom_questions")
-      .insert({ question: trimmed })
+      .insert({ question: trimmed, user_id: user!.id })
       .select("id, question")
       .single();
 
