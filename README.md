@@ -15,7 +15,7 @@ InterviewIQ simulates a real job interview and gives you instant, AI-driven feed
 ## Features
 
 ### AI Answer Analysis
-Every answer is evaluated by **Groq Llama 3.3 70B** across four dimensions:
+Every answer is evaluated by **Groq GPT-OSS 120B** across four dimensions:
 - **Relevance** — how directly the answer addresses the question
 - **Grammar & Fluency** — language quality, vocabulary, sentence structure
 - **STAR Method detection** — checks whether behavioral answers follow the Situation-Task-Action-Result structure
@@ -58,7 +58,7 @@ Two-layer transcription system that balances speed and accuracy:
 | Framework | Next.js 16 (App Router) |
 | Language | TypeScript |
 | Styling | Tailwind CSS |
-| Answer AI | Groq — Llama 3.3 70B |
+| Answer AI | Groq — GPT-OSS 120B |
 | Transcription | Groq — Whisper large-v3 |
 | Computer Vision | MediaPipe FaceLandmarker + PoseLandmarker |
 | Auth & Database | Supabase (Google OAuth + PostgreSQL) |

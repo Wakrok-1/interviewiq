@@ -17,9 +17,9 @@ const sections = [
   {
     title: "Answer Analysis",
     icon: "🧠",
-    tech: "Llama 3.3 70B via Groq",
+    tech: "GPT-OSS 120B via Groq",
     description:
-      "Your transcript and the interview question are sent to Llama 3.3 70B — a state-of-the-art open-source language model with 70 billion parameters. It evaluates your answer the way an experienced interviewer would, not with keyword matching or random numbers.",
+      "Your transcript and the interview question are sent to GPT-OSS 120B — OpenAI's open-weight language model with 120 billion parameters. It evaluates your answer the way an experienced interviewer would, not with keyword matching or random numbers.",
     details: [
       "Relevance score: how well your answer actually addresses the question",
       "Grammar & clarity score: sentence structure, coherence, and fluency",
@@ -72,7 +72,7 @@ const sections = [
     description:
       "The overall score is produced by the AI model, not a formula. However, body language and filler word metrics are computed locally and displayed alongside to give a full picture.",
     details: [
-      "AI overall score: 0–100, determined by Llama 3.3 70B based on content quality",
+      "AI overall score: 0–100, determined by GPT-OSS 120B based on content quality",
       "Relevance and grammar are sub-scores from the same AI analysis",
       "Eye contact, posture, and filler words are independent signals shown separately",
       "Nothing is random — every metric is derived from a real measurement",
